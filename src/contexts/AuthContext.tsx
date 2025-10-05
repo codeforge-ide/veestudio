@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!user) {
         try {
           await account.createAnonymousSession();
-          const userData = await account.get() as AppwriteUser;
+          await account.get();
           
           // Update user preferences with wallet address
           await account.updatePrefs({
