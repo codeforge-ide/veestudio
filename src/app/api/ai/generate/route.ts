@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const { text } = await generateText({
       model: openai('gpt-4-turbo'),
       prompt: `${SYSTEM_PROMPT}\n\nUser request: ${prompt}`,
-      maxTokens: 2000,
+      maxRetries: 2,
     });
 
     // Clean up the response to ensure it's valid Solidity

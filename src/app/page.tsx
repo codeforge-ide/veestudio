@@ -5,7 +5,8 @@ import dynamic from 'next/dynamic';
 import Header from '@/components/header/Header';
 import PrimarySidebar from '@/components/sidebars/PrimarySidebar';
 import AISidebar from '@/components/sidebars/AISidebar';
-import { WalletState, SidebarView } from '@/types';
+import { TerminalHandle } from '@/components/terminal/Terminal';
+import { WalletState, SidebarView, Connex } from '@/types';
 import { DEFAULT_CONTRACT } from '@/lib/constants';
 import { generateContract, extractContractName } from '@/lib/ai';
 import { getContractExplorerUrl } from '@/lib/vechain';
@@ -36,11 +37,11 @@ export default function Home() {
   const [isDeploying, setIsDeploying] = useState(false);
   const [compiledData, setCompiledData] = useState<{ bytecode: string; abi: unknown[] } | null>(null);
 
-  const terminalRef = useRef<{ writeLine: (text: string, type?: string) => void } | null>(null);
-  const connexRef = useRef<{ vendor: { sign: (type: string, data: unknown) => { request: () => Promise<{ txid: string; annex: { signer: string } }> } }; thor: { genesis: { id: string }; transaction: (txId: string) => { getReceipt: () => Promise<{ outputs: { contractAddress?: string }[] }> } } } | null>(null);
+  const terminalRef = useRef<TerminalHandle | null>(null);
+  const connexRef = useRef<Connex | null>(null);
 
   // Terminal ready handler
-  const handleTerminalReady = useCallback((terminal: { writeLine: (text: string, type?: string) => void }) => {
+  const handleTerminalReady = useCallback((terminal: TerminalHandle) => {
     terminalRef.current = terminal;
   }, []);
 
@@ -50,8 +51,8 @@ export default function Home() {
       terminalRef.current?.writeLine('Connecting to VeWorld wallet...', 'info');
 
       // Initialize Connex
-      if (typeof window !== 'undefined' && (window as { connex?: unknown }).connex) {
-        const connex = (window as { connex: { vendor: { sign: (type: string, data: unknown) => { request: () => Promise<{ txid: string; annex: { signer: string } }> } }; thor: { genesis: { id: string }; transaction: (txId: string) => { getReceipt: () => Promise<{ outputs: { contractAddress?: string }[] }> } } } }).connex;
+      if (typeof window !== 'undefined' && window.connex) {
+        const connex = window.connex;
         connexRef.current = connex;
 
         // Get the current wallet address
@@ -208,7 +209,7 @@ export default function Home() {
           
           const signingService = connexRef.current.vendor.sign('tx', [deployData.transaction.clauses[0]]);
 
-          if (deployData.delegatorSignature) {
+          if (deployData.delegatorSignature && signingService.delegate) {
             // Add fee delegation signature
             signingService.delegate(deployData.delegatorAddress, deployData.delegatorSignature);
             terminalRef.current?.writeLine('✨ Gas fees sponsored by VeeStudio!', 'success');

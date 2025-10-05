@@ -35,3 +35,29 @@ export interface TerminalLine {
 }
 
 export type SidebarView = 'files' | 'compile' | 'deploy';
+
+// Connex types
+export interface ConnexVendor {
+  sign: (type: string, data: unknown) => {
+    request: () => Promise<{ txid: string; annex: { signer: string } }>;
+    delegate?: (address: string, signature: string) => void;
+  };
+}
+
+export interface ConnexThor {
+  genesis: { id: string };
+  transaction: (txId: string) => {
+    getReceipt: () => Promise<{ outputs: { contractAddress?: string }[] } | null>;
+  };
+}
+
+export interface Connex {
+  vendor: ConnexVendor;
+  thor: ConnexThor;
+}
+
+declare global {
+  interface Window {
+    connex?: Connex;
+  }
+}
