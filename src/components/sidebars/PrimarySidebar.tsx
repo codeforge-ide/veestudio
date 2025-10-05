@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, IconButton, Typography, Button, Alert, Tooltip, Divider } from '@mui/material';
+import { Box, IconButton, Typography, Button, Alert, Tooltip } from '@mui/material';
 import FolderIcon from '@mui/icons-material/Folder';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
@@ -100,7 +100,7 @@ export default function PrimarySidebar({
                 }}
               >
                 <Icon 
-                  color={isActive ? item.color as any : 'action'}
+                  color={isActive ? (item.color as 'primary' | 'success' | 'secondary' | 'inherit') : 'action'}
                   sx={{ fontSize: 20 }}
                 />
                 {isExpanded && (
