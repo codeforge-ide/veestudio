@@ -10,6 +10,7 @@ import { WalletState, SidebarView, Connex } from '@/types';
 import { DEFAULT_CONTRACT } from '@/lib/constants';
 import { generateContract, extractContractName } from '@/lib/ai';
 import { getContractExplorerUrl } from '@/lib/vechain';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Dynamic imports for client-side only components
 const CodeEditor = dynamic(() => import('@/components/editor/CodeEditor'), {
@@ -39,6 +40,7 @@ export default function Home() {
 
   const terminalRef = useRef<TerminalHandle | null>(null);
   const connexRef = useRef<Connex | null>(null);
+  const { connectWallet: authConnectWallet } = useAuth();
 
   // Terminal ready handler
   const handleTerminalReady = useCallback((terminal: TerminalHandle) => {
@@ -82,8 +84,7 @@ export default function Home() {
 
         // Connect wallet to Appwrite auth
         try {
-          const { connectWallet } = await import('@/contexts/AuthContext');
-          await connectWallet(address);
+          await authConnectWallet(address);
           terminalRef.current?.writeLine('Authenticated with Appwrite', 'success');
         } catch (authError) {
           console.error('Auth error:', authError);
@@ -97,7 +98,7 @@ export default function Home() {
       console.error('Wallet connection error:', error);
       terminalRef.current?.writeLine('Failed to connect wallet', 'error');
     }
-  }, []);
+  }, [authConnectWallet]);
 
   // AI contract generation handler
   const handleGenerateContract = useCallback(async (prompt: string) => {
