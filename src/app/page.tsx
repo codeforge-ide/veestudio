@@ -79,6 +79,16 @@ export default function Home() {
 
         terminalRef.current?.writeLine(`Wallet connected: ${address}`, 'success');
         terminalRef.current?.writeLine(`Network: ${network.toUpperCase()}NET`, 'info');
+
+        // Connect wallet to Appwrite auth
+        try {
+          const { connectWallet } = await import('@/contexts/AuthContext');
+          await connectWallet(address);
+          terminalRef.current?.writeLine('Authenticated with Appwrite', 'success');
+        } catch (authError) {
+          console.error('Auth error:', authError);
+          terminalRef.current?.writeLine('Warning: Could not authenticate with backend', 'warning');
+        }
       } else {
         terminalRef.current?.writeLine('VeWorld wallet not detected. Please install VeWorld extension.', 'error');
         alert('VeWorld wallet not detected. Please install the VeWorld browser extension.');

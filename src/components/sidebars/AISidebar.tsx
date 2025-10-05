@@ -76,7 +76,7 @@ export default function AISidebar({ onGenerateContract, isGenerating }: AISideba
   return (
     <div className={`h-full bg-gray-900/50 backdrop-blur-xl border-l border-gray-800 flex flex-col transition-all duration-300 ${isExpanded ? 'w-96' : 'w-16'}`}>
       {/* Header */}
-      <div className="h-14 border-b border-gray-800 flex items-center justify-between px-4 flex-shrink-0">
+      <div className="h-16 border-b border-gray-800 flex items-center justify-between px-4 flex-shrink-0">
         {isExpanded && (
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-purple-400" />
@@ -85,7 +85,8 @@ export default function AISidebar({ onGenerateContract, isGenerating }: AISideba
         )}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="p-1 hover:bg-gray-800 rounded transition-colors"
+          className="p-1.5 hover:bg-gray-800 rounded-md transition-colors"
+          title={isExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
         >
           <ChevronLeft 
             className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? '' : 'rotate-180'}`} 
@@ -106,17 +107,17 @@ export default function AISidebar({ onGenerateContract, isGenerating }: AISideba
                   className={`max-w-[85%] rounded-lg p-3 ${
                     message.role === 'user'
                       ? 'bg-blue-500 text-white'
-                      : 'bg-gray-800 text-gray-200'
+                      : 'bg-gray-800 text-gray-200 border border-gray-700'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
                 </div>
               </div>
             ))}
             
             {isGenerating && (
               <div className="flex justify-start">
-                <div className="bg-gray-800 text-gray-200 rounded-lg p-3">
+                <div className="bg-gray-800 text-gray-200 border border-gray-700 rounded-lg p-3">
                   <div className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
                     <p className="text-sm">Generating contract...</p>
@@ -131,12 +132,12 @@ export default function AISidebar({ onGenerateContract, isGenerating }: AISideba
           {/* Example Prompts */}
           {messages.length <= 1 && (
             <div className="px-4 pb-4 space-y-2">
-              <p className="text-xs text-gray-500 font-medium">Try these examples:</p>
+              <p className="text-xs text-gray-500 font-medium mb-3">Try these examples:</p>
               {EXAMPLE_PROMPTS.slice(0, 2).map((prompt, index) => (
                 <button
                   key={index}
                   onClick={() => handleExampleClick(prompt)}
-                  className="w-full text-left text-xs text-gray-400 bg-gray-800/50 hover:bg-gray-800 p-2 rounded transition-colors"
+                  className="w-full text-left text-xs text-gray-400 bg-gray-800/50 hover:bg-gray-800 p-3 rounded-md transition-colors border border-gray-700/50 hover:border-gray-600"
                   disabled={isGenerating}
                 >
                   {prompt}
@@ -153,7 +154,7 @@ export default function AISidebar({ onGenerateContract, isGenerating }: AISideba
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Describe your contract..."
-                className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="flex-1 px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                 disabled={isGenerating}
               />
               <Button
@@ -161,6 +162,7 @@ export default function AISidebar({ onGenerateContract, isGenerating }: AISideba
                 variant="primary"
                 size="sm"
                 disabled={!input.trim() || isGenerating}
+                className="px-4"
               >
                 {isGenerating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
