@@ -1,102 +1,235 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import {
+  AppBar,
+  Toolbar,
+  Box,
+  Typography,
+  Button,
+  Chip,
+  IconButton,
+  Avatar,
+  Menu,
+  MenuItem,
+  Divider,
+} from '@mui/material';
+import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import LogoutIcon from '@mui/icons-material/Logout';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import Image from 'next/image';
-import { Rocket, Wallet, LogOut } from 'lucide-react';
 import { WalletState } from '@/types';
 import { truncateAddress } from '@/lib/vechain';
-import { Button } from '@/components/ui/Button';
-import { useAuth } from '@/contexts/AuthContext';
+import WalletModal from '@/components/modals/WalletModal';
 
 interface HeaderProps {
   wallet: WalletState;
-  onConnect: () => void;
+  onConnect: () => Promise<void>;
+  onDisconnect: () => void;
   onDeploy: () => void;
   isDeploying: boolean;
 }
 
-export default function Header({ wallet, onConnect, onDeploy, isDeploying }: HeaderProps) {
-  const { user, isAuthenticated, logout } = useAuth();
+export default function Header({ 
+  wallet, 
+  onConnect, 
+  onDisconnect,
+  onDeploy, 
+  isDeploying 
+}: HeaderProps) {
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionError, setConnectionError] = useState<string>();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const handleConnectClick = () => {
+    setWalletModalOpen(true);
+    setConnectionError(undefined);
+  };
+
+  const handleWalletConnect = async () => {
+    setIsConnecting(true);
+    setConnectionError(undefined);
+    try {
+      await onConnect();
+      setWalletModalOpen(false);
+    } catch (error) {
+      setConnectionError(error instanceof Error ? error.message : 'Failed to connect wallet');
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleCopyAddress = () => {
+    if (wallet.address) {
+      navigator.clipboard.writeText(wallet.address);
+    }
+    handleMenuClose();
+  };
+
+  const handleDisconnect = () => {
+    onDisconnect();
+    handleMenuClose();
+  };
 
   return (
-    <header className="h-16 bg-gray-900/80 backdrop-blur-xl border-b border-gray-800 flex items-center justify-between px-6 flex-shrink-0">
-      {/* Logo and Title */}
-      <div className="flex items-center gap-4">
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg blur-lg opacity-50"></div>
-          <div className="relative bg-gray-900 p-2 rounded-lg border border-gray-800">
-            <Image 
-              src="/veestudio.png" 
-              alt="VeeStudio" 
-              width={32} 
-              height={32}
-              className="w-8 h-8"
-            />
-          </div>
-        </div>
-        <div className="flex flex-col">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-            VeeStudio
-          </h1>
-          <p className="text-xs text-gray-500">VeChain IDE</p>
-        </div>
-      </div>
+    <>
+      <AppBar 
+        position="static" 
+        elevation={0}
+        sx={{ 
+          backgroundColor: 'rgba(17, 17, 17, 0.8)',
+          backdropFilter: 'blur(10px)',
+          borderBottom: 1,
+          borderColor: 'divider',
+        }}
+      >
+        <Toolbar sx={{ minHeight: 64, px: 3 }}>
+          {/* Logo and Title */}
+          <Box display="flex" alignItems="center" gap={2} flex={1}>
+            <Box
+              sx={{
+                position: 'relative',
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                backgroundColor: 'background.paper',
+                border: 1,
+                borderColor: 'divider',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+              }}
+            >
+              <Image 
+                src="/veestudio.png" 
+                alt="VeeStudio" 
+                width={28} 
+                height={28}
+              />
+            </Box>
+            <Box>
+              <Typography 
+                variant="h6" 
+                sx={{ 
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #4A90E2 0%, #8B5CF6 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  lineHeight: 1.2,
+                }}
+              >
+                VeeStudio
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                VeChain IDE
+              </Typography>
+            </Box>
+          </Box>
 
-      {/* Actions */}
-      <div className="flex items-center gap-4">
-        {/* Network Badge */}
-        {wallet.connected && wallet.network && (
-          <div className="px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-full flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-xs text-green-400 font-medium uppercase">
-              {wallet.network}net
-            </span>
-          </div>
-        )}
+          {/* Actions */}
+          <Box display="flex" alignItems="center" gap={2}>
+            {/* Network Badge */}
+            {wallet.connected && wallet.network && (
+              <Chip
+                label={`${wallet.network}net`.toUpperCase()}
+                size="small"
+                color="success"
+                variant="outlined"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: '0.75rem',
+                }}
+              />
+            )}
 
-        {/* Auth Status */}
-        {isAuthenticated && user && (
-          <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-            <span className="text-xs text-blue-400 font-medium">
-              Authenticated
-            </span>
-          </div>
-        )}
-
-        {/* Wallet Button */}
-        {wallet.connected ? (
-          <div className="flex items-center gap-2">
-            <div className="px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 flex items-center gap-2">
-              <Wallet className="w-4 h-4 text-blue-400" />
-              <span className="text-sm text-gray-300 font-mono">
-                {truncateAddress(wallet.address || '')}
-              </span>
-            </div>
-            {isAuthenticated && (
-              <Button variant="ghost" size="sm" onClick={logout} title="Logout">
-                <LogOut className="w-4 h-4" />
+            {/* Wallet Button */}
+            {wallet.connected ? (
+              <Button
+                variant="outlined"
+                startIcon={<Avatar sx={{ width: 20, height: 20 }} />}
+                onClick={handleMenuOpen}
+                sx={{ textTransform: 'none' }}
+              >
+                <Typography variant="body2" fontFamily="monospace">
+                  {truncateAddress(wallet.address || '')}
+                </Typography>
+              </Button>
+            ) : (
+              <Button
+                variant="outlined"
+                startIcon={<AccountBalanceWalletIcon />}
+                onClick={handleConnectClick}
+              >
+                Connect Wallet
               </Button>
             )}
-          </div>
-        ) : (
-          <Button variant="secondary" size="md" onClick={onConnect}>
-            <Wallet className="w-4 h-4 mr-2" />
-            Connect Wallet
-          </Button>
-        )}
 
-        {/* Deploy Button */}
-        <Button
-          variant="primary"
-          size="md"
-          onClick={onDeploy}
-          disabled={isDeploying || !wallet.connected}
-        >
-          <Rocket className="w-4 h-4 mr-2" />
-          {isDeploying ? 'Deploying...' : 'Deploy'}
-        </Button>
-      </div>
-    </header>
+            {/* Deploy Button */}
+            <Button
+              variant="contained"
+              startIcon={<RocketLaunchIcon />}
+              onClick={onDeploy}
+              disabled={isDeploying || !wallet.connected}
+              sx={{
+                background: 'linear-gradient(135deg, #4A90E2 0%, #8B5CF6 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #3A7AC2 0%, #7B4CE6 100%)',
+                },
+              }}
+            >
+              {isDeploying ? 'Deploying...' : 'Deploy'}
+            </Button>
+          </Box>
+        </Toolbar>
+      </AppBar>
+
+      {/* Wallet Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        PaperProps={{
+          sx: { minWidth: 240, mt: 1 }
+        }}
+      >
+        <Box sx={{ px: 2, py: 1.5 }}>
+          <Typography variant="caption" color="text.secondary">
+            Connected Address
+          </Typography>
+          <Typography variant="body2" fontFamily="monospace" sx={{ mt: 0.5 }}>
+            {wallet.address}
+          </Typography>
+        </Box>
+        <Divider />
+        <MenuItem onClick={handleCopyAddress}>
+          <ContentCopyIcon fontSize="small" sx={{ mr: 1.5 }} />
+          Copy Address
+        </MenuItem>
+        <MenuItem onClick={handleDisconnect}>
+          <LogoutIcon fontSize="small" sx={{ mr: 1.5 }} />
+          Disconnect
+        </MenuItem>
+      </Menu>
+
+      {/* Wallet Modal */}
+      <WalletModal
+        open={walletModalOpen}
+        onClose={() => setWalletModalOpen(false)}
+        onConnect={handleWalletConnect}
+        isConnecting={isConnecting}
+        error={connectionError}
+      />
+    </>
   );
 }
