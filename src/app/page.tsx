@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef } from 'react';
+import { Box } from '@mui/material';
 import dynamic from 'next/dynamic';
 import Header from '@/components/header/Header';
 import PrimarySidebar from '@/components/sidebars/PrimarySidebar';
@@ -10,23 +11,22 @@ import { WalletState, SidebarView, Connex } from '@/types';
 import { DEFAULT_CONTRACT } from '@/lib/constants';
 import { generateContract, extractContractName } from '@/lib/ai';
 import { getContractExplorerUrl } from '@/lib/vechain';
-import { useAuth } from '@/contexts/AuthContext';
 
-// Dynamic imports for client-side only components
 const CodeEditor = dynamic(() => import('@/components/editor/CodeEditor'), {
   ssr: false,
-  loading: () => <div className="h-full w-full bg-gray-900 flex items-center justify-center">
-    <div className="text-gray-400">Loading editor...</div>
-  </div>,
+  loading: () => (
+    <Box display="flex" alignItems="center" justifyContent="center" height="100%" bgcolor="background.default">
+      Loading editor...
+    </Box>
+  ),
 });
 
 const Terminal = dynamic(() => import('@/components/terminal/Terminal'), {
   ssr: false,
-  loading: () => <div className="h-full w-full bg-gray-900"></div>,
+  loading: () => <Box height="100%" bgcolor="background.default" />,
 });
 
 export default function Home() {
-  // State management
   const [code, setCode] = useState(DEFAULT_CONTRACT);
   const [wallet, setWallet] = useState<WalletState>({
     connected: false,
@@ -40,24 +40,19 @@ export default function Home() {
 
   const terminalRef = useRef<TerminalHandle | null>(null);
   const connexRef = useRef<Connex | null>(null);
-  const { connectWallet: authConnectWallet } = useAuth();
 
-  // Terminal ready handler
   const handleTerminalReady = useCallback((terminal: TerminalHandle) => {
     terminalRef.current = terminal;
   }, []);
 
-  // Wallet connection handler
   const handleConnect = useCallback(async () => {
     try {
       terminalRef.current?.writeLine('Connecting to VeWorld wallet...', 'info');
 
-      // Initialize Connex
       if (typeof window !== 'undefined' && window.connex) {
         const connex = window.connex;
         connexRef.current = connex;
 
-        // Get the current wallet address
         const signingService = connex.vendor.sign('cert', {
           purpose: 'identification',
           payload: {
@@ -79,28 +74,27 @@ export default function Home() {
           network,
         });
 
-        terminalRef.current?.writeLine(`Wallet connected: ${address}`, 'success');
-        terminalRef.current?.writeLine(`Network: ${network.toUpperCase()}NET`, 'info');
-
-        // Connect wallet to Appwrite auth
-        try {
-          await authConnectWallet(address);
-          terminalRef.current?.writeLine('Authenticated with Appwrite', 'success');
-        } catch (authError) {
-          console.error('Auth error:', authError);
-          terminalRef.current?.writeLine('Warning: Could not authenticate with backend', 'warning');
-        }
+        terminalRef.current?.writeLine(`✓ Wallet connected: ${address}`, 'success');
+        terminalRef.current?.writeLine(`✓ Network: ${network.toUpperCase()}NET`, 'info');
       } else {
-        terminalRef.current?.writeLine('VeWorld wallet not detected. Please install VeWorld extension.', 'error');
-        alert('VeWorld wallet not detected. Please install the VeWorld browser extension.');
+        throw new Error('VeWorld wallet not detected. Please install VeWorld extension.');
       }
     } catch (error) {
       console.error('Wallet connection error:', error);
-      terminalRef.current?.writeLine('Failed to connect wallet', 'error');
+      terminalRef.current?.writeLine('✗ Failed to connect wallet', 'error');
+      throw error;
     }
-  }, [authConnectWallet]);
+  }, []);
 
-  // AI contract generation handler
+  const handleDisconnect = useCallback(() => {
+    setWallet({
+      connected: false,
+      address: null,
+      network: null,
+    });
+    terminalRef.current?.writeLine('✓ Wallet disconnected', 'info');
+  }, []);
+
   const handleGenerateContract = useCallback(async (prompt: string) => {
     setIsGenerating(true);
     terminalRef.current?.writeLine(`AI: Generating contract from prompt: "${prompt}"`, 'info');
@@ -108,20 +102,19 @@ export default function Home() {
     try {
       const result = await generateContract(prompt);
       setCode(result.code);
-      terminalRef.current?.writeLine('Contract generated successfully!', 'success');
+      terminalRef.current?.writeLine('✓ Contract generated successfully!', 'success');
       terminalRef.current?.writeLine(result.explanation, 'info');
     } catch (error) {
       console.error('Generation error:', error);
-      terminalRef.current?.writeLine(`Generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      terminalRef.current?.writeLine(`✗ Generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
       throw error;
     } finally {
       setIsGenerating(false);
     }
   }, []);
 
-  // Compile handler
   const handleCompile = useCallback(async () => {
-    terminalRef.current?.writeLine('Compiling contract...', 'info');
+    terminalRef.current?.writeLine('⚙ Compiling contract...', 'info');
 
     try {
       const contractName = extractContractName(code);
@@ -135,41 +128,39 @@ export default function Home() {
       const data = await response.json();
 
       if (!data.success) {
-        terminalRef.current?.writeLine('Compilation failed!', 'error');
+        terminalRef.current?.writeLine('✗ Compilation failed!', 'error');
         terminalRef.current?.writeLine(data.details || data.error, 'error');
         return;
       }
 
       setCompiledData({ bytecode: data.bytecode, abi: data.abi });
-      terminalRef.current?.writeLine('Compilation successful!', 'success');
-      terminalRef.current?.writeLine(`Contract: ${data.contractName}`, 'info');
+      terminalRef.current?.writeLine('✓ Compilation successful!', 'success');
+      terminalRef.current?.writeLine(`  Contract: ${data.contractName}`, 'info');
       
       if (data.warnings && data.warnings.length > 0) {
-        terminalRef.current?.writeLine('Warnings:', 'warning');
+        terminalRef.current?.writeLine('⚠ Warnings:', 'warning');
         data.warnings.forEach((warning: string) => {
-          terminalRef.current?.writeLine(warning, 'warning');
+          terminalRef.current?.writeLine(`  ${warning}`, 'warning');
         });
       }
     } catch (error) {
       console.error('Compilation error:', error);
-      terminalRef.current?.writeLine('Compilation error', 'error');
+      terminalRef.current?.writeLine('✗ Compilation error', 'error');
     }
   }, [code]);
 
-  // Deploy handler
   const handleDeploy = useCallback(async () => {
     if (!wallet.connected) {
-      terminalRef.current?.writeLine('Please connect your wallet first', 'error');
+      terminalRef.current?.writeLine('✗ Please connect your wallet first', 'error');
       return;
     }
 
     setIsDeploying(true);
-    terminalRef.current?.writeLine('Starting deployment process...', 'info');
+    terminalRef.current?.writeLine('🚀 Starting deployment process...', 'info');
 
     try {
-      // Step 1: Compile if not already compiled
       if (!compiledData) {
-        terminalRef.current?.writeLine('Compiling contract...', 'info');
+        terminalRef.current?.writeLine('⚙ Compiling contract...', 'info');
         const contractName = extractContractName(code);
         
         const compileResponse = await fetch('/api/compile', {
@@ -181,17 +172,16 @@ export default function Home() {
         const compileData = await compileResponse.json();
 
         if (!compileData.success) {
-          terminalRef.current?.writeLine('Compilation failed!', 'error');
+          terminalRef.current?.writeLine('✗ Compilation failed!', 'error');
           terminalRef.current?.writeLine(compileData.details || compileData.error, 'error');
           setIsDeploying(false);
           return;
         }
 
-        terminalRef.current?.writeLine('Compilation successful!', 'success');
+        terminalRef.current?.writeLine('✓ Compilation successful!', 'success');
         setCompiledData({ bytecode: compileData.bytecode, abi: compileData.abi });
         
-        // Step 2: Prepare deployment transaction
-        terminalRef.current?.writeLine('Preparing deployment transaction...', 'info');
+        terminalRef.current?.writeLine('📝 Preparing deployment transaction...', 'info');
         
         const deployResponse = await fetch('/api/deploy', {
           method: 'POST',
@@ -206,22 +196,20 @@ export default function Home() {
         const deployData = await deployResponse.json();
 
         if (!deployData.success) {
-          terminalRef.current?.writeLine('Deployment preparation failed!', 'error');
+          terminalRef.current?.writeLine('✗ Deployment preparation failed!', 'error');
           terminalRef.current?.writeLine(deployData.error, 'error');
           setIsDeploying(false);
           return;
         }
 
-        terminalRef.current?.writeLine(deployData.message, 'info');
+        terminalRef.current?.writeLine('✓ Transaction prepared', 'info');
 
-        // Step 3: Sign and send transaction via Connex
         if (connexRef.current) {
-          terminalRef.current?.writeLine('Requesting signature from VeWorld...', 'info');
+          terminalRef.current?.writeLine('📝 Requesting signature from VeWorld...', 'info');
           
           const signingService = connexRef.current.vendor.sign('tx', [deployData.transaction.clauses[0]]);
 
           if (deployData.delegatorSignature && signingService.delegate) {
-            // Add fee delegation signature
             signingService.delegate(deployData.delegatorAddress, deployData.delegatorSignature);
             terminalRef.current?.writeLine('✨ Gas fees sponsored by VeeStudio!', 'success');
           }
@@ -229,10 +217,9 @@ export default function Home() {
           const result = await signingService.request();
           const txId = result.txid;
 
-          terminalRef.current?.writeLine(`Transaction signed! TX ID: ${txId}`, 'success');
-          terminalRef.current?.writeLine('Waiting for transaction confirmation...', 'info');
+          terminalRef.current?.writeLine(`✓ Transaction signed! TX ID: ${txId}`, 'success');
+          terminalRef.current?.writeLine('⏳ Waiting for confirmation...', 'info');
 
-          // Wait for transaction receipt
           const receipt = await connexRef.current.thor.transaction(txId).getReceipt();
           
           if (receipt) {
@@ -240,35 +227,33 @@ export default function Home() {
             
             if (contractAddress) {
               terminalRef.current?.writeLine('🎉 Contract deployed successfully!', 'success');
-              terminalRef.current?.writeLine(`Contract Address: ${contractAddress}`, 'success');
+              terminalRef.current?.writeLine(`📍 Contract Address: ${contractAddress}`, 'success');
               
               const explorerUrl = getContractExplorerUrl(wallet.network || 'test', contractAddress);
-              terminalRef.current?.writeLine(`View on explorer: ${explorerUrl}`, 'info');
+              terminalRef.current?.writeLine(`🔗 Explorer: ${explorerUrl}`, 'info');
             }
           }
         }
       }
     } catch (error) {
       console.error('Deployment error:', error);
-      terminalRef.current?.writeLine(`Deployment failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      terminalRef.current?.writeLine(`✗ Deployment failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsDeploying(false);
     }
   }, [wallet, code, compiledData]);
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-gray-950 overflow-hidden">
-      {/* Header */}
+    <Box sx={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', bgcolor: 'background.default', overflow: 'hidden' }}>
       <Header
         wallet={wallet}
         onConnect={handleConnect}
+        onDisconnect={handleDisconnect}
         onDeploy={handleDeploy}
         isDeploying={isDeploying}
       />
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Primary Sidebar */}
+      <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         <PrimarySidebar
           activeView={activeView}
           onViewChange={setActiveView}
@@ -276,24 +261,21 @@ export default function Home() {
           onDeploy={handleDeploy}
         />
 
-        {/* Editor */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-hidden border-r border-b border-gray-800">
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Box sx={{ flex: 1, overflow: 'hidden', borderRight: 1, borderBottom: 1, borderColor: 'divider' }}>
             <CodeEditor value={code} onChange={(value) => setCode(value || '')} />
-          </div>
+          </Box>
 
-          {/* Terminal */}
-          <div className="h-48 border-r border-gray-800">
+          <Box sx={{ height: 192, borderRight: 1, borderColor: 'divider' }}>
             <Terminal onReady={handleTerminalReady} />
-          </div>
-        </div>
+          </Box>
+        </Box>
 
-        {/* AI Sidebar */}
         <AISidebar
           onGenerateContract={handleGenerateContract}
           isGenerating={isGenerating}
         />
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
