@@ -1,10 +1,23 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, Loader2, ChevronLeft } from 'lucide-react';
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
+  Paper,
+  CircularProgress,
+  Stack,
+  Fade,
+  Divider,
+} from '@mui/material';
+import SendIcon from '@mui/icons-material/Send';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import PersonIcon from '@mui/icons-material/Person';
+import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import { Message } from '@/types';
 import { EXAMPLE_PROMPTS } from '@/lib/constants';
-import { Button } from '@/components/ui/Button';
 
 interface AISidebarProps {
   onGenerateContract: (prompt: string) => Promise<void>;
@@ -16,12 +29,11 @@ export default function AISidebar({ onGenerateContract, isGenerating }: AISideba
     {
       id: '1',
       role: 'assistant',
-      content: 'Hi! I\'m your AI assistant. I can help you generate smart contracts. Try asking me to create a contract, or click one of the examples below!',
+      content: "Hi! I'm your AI assistant for VeChain smart contract development. I can help you generate Solidity contracts from natural language descriptions. What would you like to build?",
       timestamp: Date.now(),
     },
   ]);
   const [input, setInput] = useState('');
-  const [isExpanded, setIsExpanded] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -52,7 +64,7 @@ export default function AISidebar({ onGenerateContract, isGenerating }: AISideba
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Contract generated successfully! Check your editor.',
+        content: '✨ Contract generated successfully! Check your editor to see the code. You can now compile and deploy it.',
         timestamp: Date.now(),
       };
       
@@ -61,7 +73,7 @@ export default function AISidebar({ onGenerateContract, isGenerating }: AISideba
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        content: `❌ Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
         timestamp: Date.now(),
       };
       
@@ -74,106 +86,293 @@ export default function AISidebar({ onGenerateContract, isGenerating }: AISideba
   };
 
   return (
-    <div className={`h-full bg-gray-900/50 backdrop-blur-xl border-l border-gray-800 flex flex-col transition-all duration-300 ${isExpanded ? 'w-96' : 'w-16'}`}>
+    <Box 
+      sx={{ 
+        width: 400,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: 'background.paper',
+        borderLeft: 1,
+        borderColor: 'divider',
+      }}
+    >
       {/* Header */}
-      <div className="h-16 border-b border-gray-800 flex items-center justify-between px-4 flex-shrink-0">
-        {isExpanded && (
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-purple-400" />
-            <h2 className="text-sm font-semibold text-gray-300">AI Assistant</h2>
-          </div>
-        )}
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="p-1.5 hover:bg-gray-800 rounded-md transition-colors"
-          title={isExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
+      <Box 
+        sx={{ 
+          height: 64,
+          flexShrink: 0,
+          borderBottom: 1,
+          borderColor: 'divider',
+          display: 'flex',
+          alignItems: 'center',
+          px: 3,
+          gap: 1.5,
+          backgroundColor: 'rgba(75, 144, 226, 0.05)',
+        }}
+      >
+        <Box
+          sx={{
+            width: 36,
+            height: 36,
+            borderRadius: 2,
+            background: 'linear-gradient(135deg, #4A90E2 0%, #8B5CF6 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          <ChevronLeft 
-            className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? '' : 'rotate-180'}`} 
-          />
-        </button>
-      </div>
+          <SmartToyIcon sx={{ color: 'white', fontSize: 20 }} />
+        </Box>
+        <Box flex={1}>
+          <Typography variant="subtitle1" fontWeight={600}>
+            AI Assistant
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Powered by GPT-4
+          </Typography>
+        </Box>
+      </Box>
 
-      {isExpanded && (
-        <>
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+      {/* Messages Area */}
+      <Box 
+        sx={{ 
+          flex: 1,
+          overflow: 'auto',
+          px: 3,
+          py: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3,
+          '&::-webkit-scrollbar': {
+            width: '8px',
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: 'transparent',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '4px',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            },
+          },
+        }}
+      >
+        {messages.map((message) => (
+          <Fade in key={message.id} timeout={300}>
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 2,
+                alignItems: 'flex-start',
+                flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
+              }}
+            >
+              {/* Avatar */}
+              <Box
+                sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: message.role === 'user' ? 2 : '50%',
+                  backgroundColor: message.role === 'user' 
+                    ? 'primary.main' 
+                    : 'secondary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
               >
-                <div
-                  className={`max-w-[85%] rounded-lg p-3 ${
-                    message.role === 'user'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-800 text-gray-200 border border-gray-700'
-                  }`}
-                >
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                </div>
-              </div>
-            ))}
-            
-            {isGenerating && (
-              <div className="flex justify-start">
-                <div className="bg-gray-800 text-gray-200 border border-gray-700 rounded-lg p-3">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
-                    <p className="text-sm">Generating contract...</p>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Example Prompts */}
-          {messages.length <= 1 && (
-            <div className="px-4 pb-4 space-y-2">
-              <p className="text-xs text-gray-500 font-medium mb-3">Try these examples:</p>
-              {EXAMPLE_PROMPTS.slice(0, 2).map((prompt, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleExampleClick(prompt)}
-                  className="w-full text-left text-xs text-gray-400 bg-gray-800/50 hover:bg-gray-800 p-3 rounded-md transition-colors border border-gray-700/50 hover:border-gray-600"
-                  disabled={isGenerating}
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Input */}
-          <form onSubmit={handleSubmit} className="p-4 border-t border-gray-800 flex-shrink-0">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Describe your contract..."
-                className="flex-1 px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                disabled={isGenerating}
-              />
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                disabled={!input.trim() || isGenerating}
-                className="px-4"
-              >
-                {isGenerating ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                {message.role === 'user' ? (
+                  <PersonIcon sx={{ fontSize: 18, color: 'white' }} />
                 ) : (
-                  <Send className="w-4 h-4" />
+                  <SmartToyIcon sx={{ fontSize: 18, color: 'white' }} />
                 )}
-              </Button>
-            </div>
-          </form>
+              </Box>
+
+              {/* Message Content */}
+              <Box sx={{ flex: 1, maxWidth: '85%' }}>
+                <Typography 
+                  variant="caption" 
+                  fontWeight={600}
+                  sx={{ 
+                    mb: 0.5,
+                    display: 'block',
+                    color: message.role === 'user' ? 'primary.main' : 'secondary.main',
+                  }}
+                >
+                  {message.role === 'user' ? 'You' : 'AI Assistant'}
+                </Typography>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    backgroundColor: message.role === 'user' 
+                      ? 'rgba(74, 144, 226, 0.1)' 
+                      : 'action.hover',
+                    border: 1,
+                    borderColor: message.role === 'user'
+                      ? 'rgba(74, 144, 226, 0.3)'
+                      : 'divider',
+                  }}
+                >
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      lineHeight: 1.7,
+                      color: 'text.primary',
+                    }}
+                  >
+                    {message.content}
+                  </Typography>
+                </Paper>
+              </Box>
+            </Box>
+          </Fade>
+        ))}
+        
+        {isGenerating && (
+          <Fade in timeout={300}>
+            <Box display="flex" gap={2} alignItems="flex-start">
+              <Box
+                sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  backgroundColor: 'secondary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <SmartToyIcon sx={{ fontSize: 18, color: 'white' }} />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="caption" fontWeight={600} color="secondary.main" sx={{ mb: 0.5, display: 'block' }}>
+                  AI Assistant
+                </Typography>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    backgroundColor: 'action.hover',
+                    border: 1,
+                    borderColor: 'divider',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                  }}
+                >
+                  <CircularProgress size={16} color="secondary" />
+                  <Typography variant="body2" color="text.secondary">
+                    Generating your smart contract...
+                  </Typography>
+                </Paper>
+              </Box>
+            </Box>
+          </Fade>
+        )}
+        
+        <div ref={messagesEndRef} />
+      </Box>
+
+      {/* Example Prompts Section */}
+      {messages.length <= 1 && (
+        <>
+          <Divider />
+          <Box sx={{ px: 3, py: 2, backgroundColor: 'rgba(139, 92, 246, 0.05)' }}>
+            <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+              <LightbulbOutlinedIcon sx={{ fontSize: 18, color: 'warning.main' }} />
+              <Typography variant="caption" fontWeight={600} color="text.secondary">
+                Try these examples:
+              </Typography>
+            </Box>
+            <Stack spacing={1}>
+              {EXAMPLE_PROMPTS.slice(0, 3).map((prompt, index) => (
+                <Button
+                  key={index}
+                  variant="outlined"
+                  size="small"
+                  onClick={() => handleExampleClick(prompt)}
+                  disabled={isGenerating}
+                  sx={{
+                    justifyContent: 'flex-start',
+                    textAlign: 'left',
+                    textTransform: 'none',
+                    py: 1.5,
+                    px: 2,
+                    borderColor: 'divider',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      backgroundColor: 'rgba(74, 144, 226, 0.05)',
+                    },
+                  }}
+                >
+                  <Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    {prompt}
+                  </Typography>
+                </Button>
+              ))}
+            </Stack>
+          </Box>
         </>
       )}
-    </div>
+
+      {/* Input Area */}
+      <Divider />
+      <Box 
+        component="form"
+        onSubmit={handleSubmit}
+        sx={{ 
+          p: 3,
+          backgroundColor: 'background.paper',
+          flexShrink: 0,
+        }}
+      >
+        <Stack spacing={1.5}>
+          <TextField
+            fullWidth
+            multiline
+            maxRows={4}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Describe the smart contract you want to create..."
+            disabled={isGenerating}
+            variant="outlined"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: 'action.hover',
+                '&:hover': {
+                  backgroundColor: 'action.selected',
+                },
+                '&.Mui-focused': {
+                  backgroundColor: 'background.paper',
+                },
+              },
+            }}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            endIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+            disabled={!input.trim() || isGenerating}
+            fullWidth
+            size="large"
+            sx={{
+              background: 'linear-gradient(135deg, #4A90E2 0%, #8B5CF6 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #3A7AC2 0%, #7B4CE6 100%)',
+              },
+              py: 1.5,
+            }}
+          >
+            {isGenerating ? 'Generating...' : 'Generate Contract'}
+          </Button>
+        </Stack>
+      </Box>
+    </Box>
   );
 }

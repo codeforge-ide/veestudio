@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Box, IconButton, Typography, Button, Alert, Tooltip } from '@mui/material';
 import FolderIcon from '@mui/icons-material/Folder';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import { SidebarView } from '@/types';
 import SourceControl from './SourceControl';
@@ -23,8 +22,6 @@ export default function PrimarySidebar({
   onCompile,
   onDeploy 
 }: PrimarySidebarProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
-
   const menuItems = [
     { id: 'files' as SidebarView, icon: FolderIcon, label: 'Files', color: 'primary' },
     { id: 'source-control' as SidebarView, icon: GitHubIcon, label: 'Source Control', color: 'inherit' },
@@ -33,64 +30,33 @@ export default function PrimarySidebar({
   ];
 
   return (
-    <Box 
-      sx={{ 
-        height: '100%', 
-        backgroundColor: 'rgba(17, 17, 17, 0.5)',
-        backdropFilter: 'blur(10px)',
-        borderRight: 1, 
-        borderColor: 'divider',
-        transition: 'width 0.3s',
-        width: isExpanded ? 288 : 64,
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      {/* Header */}
-      <Box 
-        sx={{ 
-          height: 64, 
-          borderBottom: 1, 
+    <Box display="flex" height="100%">
+      {/* STAGE 1: Icon-Only Fixed Bar (64px) - Like VSCode Activity Bar */}
+      <Box
+        sx={{
+          width: 64,
+          backgroundColor: 'rgba(17, 17, 17, 0.8)',
+          backdropFilter: 'blur(10px)',
+          borderRight: 1,
           borderColor: 'divider',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          px: 2,
+          flexDirection: 'column',
+          py: 1,
+          flexShrink: 0,
         }}
       >
-        {isExpanded && (
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-            Explorer
-          </Typography>
-        )}
-        <Tooltip title={isExpanded ? 'Collapse sidebar' : 'Expand sidebar'}>
-          <IconButton size="small" onClick={() => setIsExpanded(!isExpanded)}>
-            <ChevronRightIcon 
-              sx={{ 
-                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.3s',
-              }} 
-            />
-          </IconButton>
-        </Tooltip>
-      </Box>
-
-      {/* Menu Items */}
-      <Box sx={{ py: 1 }}>
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
           
           return (
-            <Tooltip key={item.id} title={!isExpanded ? item.label : ''} placement="right">
-              <Button
+            <Tooltip key={item.id} title={item.label} placement="right">
+              <IconButton
                 onClick={() => onViewChange(item.id)}
-                fullWidth
                 sx={{
-                  justifyContent: isExpanded ? 'flex-start' : 'center',
-                  px: 2,
-                  py: 1.5,
+                  width: '100%',
                   borderRadius: 0,
+                  py: 2,
                   borderLeft: isActive ? 2 : 0,
                   borderColor: 'primary.main',
                   backgroundColor: isActive ? 'action.selected' : 'transparent',
@@ -101,36 +67,53 @@ export default function PrimarySidebar({
               >
                 <Icon 
                   color={isActive ? (item.color as 'primary' | 'success' | 'secondary' | 'inherit') : 'action'}
-                  sx={{ fontSize: 20 }}
+                  sx={{ fontSize: 24 }}
                 />
-                {isExpanded && (
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      ml: 1.5,
-                      fontWeight: isActive ? 600 : 400,
-                      color: isActive ? 'text.primary' : 'text.secondary',
-                    }}
-                  >
-                    {item.label}
-                  </Typography>
-                )}
-              </Button>
+              </IconButton>
             </Tooltip>
           );
         })}
       </Box>
 
-      {/* Content Area */}
-      {isExpanded && (
-        <Box sx={{ flex: 1, overflow: 'auto', px: 2, py: 3 }}>
+      {/* STAGE 2: Content Panel (Adjustable 288px) - Like VSCode Sidebar */}
+      <Box
+        sx={{
+          width: 288,
+          backgroundColor: 'rgba(17, 17, 17, 0.5)',
+          backdropFilter: 'blur(10px)',
+          borderRight: 1,
+          borderColor: 'divider',
+          display: 'flex',
+          flexDirection: 'column',
+          flexShrink: 0,
+        }}
+      >
+        {/* Content Header */}
+        <Box 
+          sx={{ 
+            height: 64,
+            borderBottom: 1,
+            borderColor: 'divider',
+            display: 'flex',
+            alignItems: 'center',
+            px: 3,
+            flexShrink: 0,
+          }}
+        >
+          <Typography variant="subtitle1" fontWeight={600}>
+            {menuItems.find(item => item.id === activeView)?.label}
+          </Typography>
+        </Box>
+
+        {/* Content Area - Changes based on active tab */}
+        <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
           {activeView === 'files' && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box display="flex" flexDirection="column" gap={2}>
               <Box 
                 sx={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: 1,
+                  gap: 1.5,
                   p: 1.5,
                   backgroundColor: 'action.hover',
                   borderRadius: 1,
@@ -150,45 +133,45 @@ export default function PrimarySidebar({
           )}
 
           {activeView === 'compile' && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+            <Box display="flex" flexDirection="column" gap={2}>
+              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: 1 }}>
                 Compile your Solidity contract to check for errors and generate bytecode for deployment.
               </Typography>
               <Button
-                variant="outlined"
+                variant="contained"
                 color="success"
                 startIcon={<PlayArrowIcon />}
                 onClick={onCompile}
                 fullWidth
-                sx={{ mt: 1 }}
+                size="large"
               >
                 Compile Contract
               </Button>
-              <Alert severity="info" sx={{ mt: 2 }}>
+              <Alert severity="info" sx={{ mt: 1 }}>
                 <Typography variant="caption">
-                  💡 Tip: Compile your contract before deploying to catch any errors early.
+                  �� Compile your contract before deploying to catch any errors early.
                 </Typography>
               </Alert>
             </Box>
           )}
 
           {activeView === 'deploy' && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+            <Box display="flex" flexDirection="column" gap={2}>
+              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: 1 }}>
                 Deploy your compiled contract to VeChain TestNet with sponsored gas fees.
               </Typography>
               <Button
-                variant="outlined"
+                variant="contained"
                 color="secondary"
                 startIcon={<RocketLaunchIcon />}
                 onClick={onDeploy}
                 fullWidth
-                sx={{ mt: 1 }}
+                size="large"
               >
                 Deploy Contract
               </Button>
-              <Alert severity="success" sx={{ mt: 2 }}>
-                <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 600 }}>
+              <Alert severity="success" sx={{ mt: 1 }}>
+                <Typography variant="body2" fontWeight={600} gutterBottom>
                   ✨ Gas fees sponsored!
                 </Typography>
                 <Typography variant="caption">
@@ -198,7 +181,7 @@ export default function PrimarySidebar({
             </Box>
           )}
         </Box>
-      )}
+      </Box>
     </Box>
   );
 }
