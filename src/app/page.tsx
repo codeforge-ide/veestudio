@@ -8,7 +8,7 @@ import AISidebar from '@/components/sidebars/AISidebar';
 import { WalletState, SidebarView } from '@/types';
 import { DEFAULT_CONTRACT } from '@/lib/constants';
 import { generateContract, extractContractName } from '@/lib/ai';
-import { getExplorerUrl, getContractExplorerUrl } from '@/lib/vechain';
+import { getContractExplorerUrl } from '@/lib/vechain';
 
 // Dynamic imports for client-side only components
 const CodeEditor = dynamic(() => import('@/components/editor/CodeEditor'), {
@@ -34,13 +34,13 @@ export default function Home() {
   const [activeView, setActiveView] = useState<SidebarView>('files');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
-  const [compiledData, setCompiledData] = useState<{ bytecode: string; abi: any[] } | null>(null);
+  const [compiledData, setCompiledData] = useState<{ bytecode: string; abi: unknown[] } | null>(null);
 
-  const terminalRef = useRef<any>(null);
-  const connexRef = useRef<any>(null);
+  const terminalRef = useRef<{ writeLine: (text: string, type?: string) => void } | null>(null);
+  const connexRef = useRef<{ vendor: { sign: (type: string, data: unknown) => { request: () => Promise<{ txid: string; annex: { signer: string } }> } }; thor: { genesis: { id: string }; transaction: (txId: string) => { getReceipt: () => Promise<{ outputs: { contractAddress?: string }[] }> } } } | null>(null);
 
   // Terminal ready handler
-  const handleTerminalReady = useCallback((terminal: any) => {
+  const handleTerminalReady = useCallback((terminal: { writeLine: (text: string, type?: string) => void }) => {
     terminalRef.current = terminal;
   }, []);
 
@@ -50,13 +50,12 @@ export default function Home() {
       terminalRef.current?.writeLine('Connecting to VeWorld wallet...', 'info');
 
       // Initialize Connex
-      if (typeof window !== 'undefined' && (window as any).connex) {
-        const connex = (window as any).connex;
+      if (typeof window !== 'undefined' && (window as { connex?: unknown }).connex) {
+        const connex = (window as { connex: { vendor: { sign: (type: string, data: unknown) => { request: () => Promise<{ txid: string; annex: { signer: string } }> } }; thor: { genesis: { id: string }; transaction: (txId: string) => { getReceipt: () => Promise<{ outputs: { contractAddress?: string }[] }> } } } }).connex;
         connexRef.current = connex;
 
         // Get the current wallet address
-        const vendor = connex.vendor;
-        const signingService = vendor.sign('cert', {
+        const signingService = connex.vendor.sign('cert', {
           purpose: 'identification',
           payload: {
             type: 'text',
@@ -207,8 +206,7 @@ export default function Home() {
         if (connexRef.current) {
           terminalRef.current?.writeLine('Requesting signature from VeWorld...', 'info');
           
-          const vendor = connexRef.current.vendor;
-          const signingService = vendor.sign('tx', [deployData.transaction.clauses[0]]);
+          const signingService = connexRef.current.vendor.sign('tx', [deployData.transaction.clauses[0]]);
 
           if (deployData.delegatorSignature) {
             // Add fee delegation signature

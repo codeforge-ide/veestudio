@@ -5,7 +5,6 @@ import { Send, Sparkles, Loader2, ChevronLeft } from 'lucide-react';
 import { Message } from '@/types';
 import { EXAMPLE_PROMPTS } from '@/lib/constants';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 
 interface AISidebarProps {
   onGenerateContract: (prompt: string) => Promise<void>;

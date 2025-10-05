@@ -3,7 +3,7 @@ import { Transaction, secp256k1, blake2b256 } from 'thor-devkit';
 
 export async function POST(request: NextRequest) {
   try {
-    const { bytecode, abi, userAddress } = await request.json();
+    const { bytecode, userAddress } = await request.json();
 
     if (!bytecode || !userAddress) {
       return NextResponse.json(
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         };
 
         // Sign the transaction with admin key for gas payment
-        const tx = new Transaction(txWithDelegation as any);
+        const tx = new Transaction(txWithDelegation as never);
         const signingHash = tx.signingHash();
         const adminSignature = secp256k1.sign(signingHash, adminKey);
 

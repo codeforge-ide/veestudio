@@ -34,13 +34,13 @@ export async function POST(request: NextRequest) {
 
     // Check for errors
     if (output.errors) {
-      const errors = output.errors.filter((error: any) => error.severity === 'error');
+      const errors = output.errors.filter((error: { severity: string }) => error.severity === 'error');
       if (errors.length > 0) {
         return NextResponse.json(
           {
             success: false,
             error: 'Compilation failed',
-            details: errors.map((e: any) => e.formattedMessage).join('\n'),
+            details: errors.map((e: { formattedMessage: string }) => e.formattedMessage).join('\n'),
           },
           { status: 400 }
         );
@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
       abi,
       contractName: targetContractName,
       warnings: output.errors
-        ?.filter((e: any) => e.severity === 'warning')
-        .map((e: any) => e.formattedMessage) || [],
+        ?.filter((e: { severity: string }) => e.severity === 'warning')
+        .map((e: { formattedMessage: string }) => e.formattedMessage) || [],
     });
   } catch (error) {
     console.error('Compilation error:', error);

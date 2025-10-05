@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { EDITOR_OPTIONS } from '@/lib/constants';
 
@@ -11,17 +11,18 @@ interface CodeEditorProps {
 }
 
 export default function CodeEditor({ value, onChange, language = 'sol' }: CodeEditorProps) {
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<unknown>(null);
 
-  function handleEditorDidMount(editor: any, monaco: any) {
+  function handleEditorDidMount(editor: unknown, monaco: unknown) {
     editorRef.current = editor;
     
     // Register Solidity language if not already registered
-    if (!monaco.languages.getLanguages().some((lang: any) => lang.id === 'sol')) {
-      monaco.languages.register({ id: 'sol' });
+    const monacoTyped = monaco as { languages: { getLanguages: () => { id: string }[]; register: (config: { id: string }) => void; setMonarchTokensProvider: (id: string, provider: unknown) => void } };
+    if (!monacoTyped.languages.getLanguages().some((lang: { id: string }) => lang.id === 'sol')) {
+      monacoTyped.languages.register({ id: 'sol' });
       
       // Basic Solidity syntax highlighting
-      monaco.languages.setMonarchTokensProvider('sol', {
+      monacoTyped.languages.setMonarchTokensProvider('sol', {
         tokenizer: {
           root: [
             [/pragma\s+solidity/, 'keyword'],

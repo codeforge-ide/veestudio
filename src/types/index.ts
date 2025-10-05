@@ -8,14 +8,14 @@ export interface Message {
 export interface CompileResult {
   success: boolean;
   bytecode?: string;
-  abi?: any[];
+  abi?: unknown[];
   contractName?: string;
   error?: string;
 }
 
 export interface DeploymentResult {
   success: boolean;
-  transaction?: any;
+  transaction?: unknown;
   contractAddress?: string;
   txId?: string;
   error?: string;
