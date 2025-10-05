@@ -34,7 +34,7 @@ export interface TerminalLine {
   timestamp: number;
 }
 
-export type SidebarView = 'files' | 'compile' | 'deploy';
+export type SidebarView = 'files' | 'compile' | 'deploy' | 'source-control';
 
 // Connex types
 export interface ConnexVendor {
