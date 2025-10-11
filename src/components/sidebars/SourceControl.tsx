@@ -1,22 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Button, 
-  Avatar, 
-  Chip,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  Alert,
-  CircularProgress
+import {
+  Box, Typography, Button, Avatar, Chip, Divider, List, ListItem, ListItemText,
+  Alert, CircularProgress, TextField, IconButton
 } from '@mui/material';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import LogoutIcon from '@mui/icons-material/Logout';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
 import { OAuthProvider } from 'appwrite';
 import { account } from '@/lib/appwrite';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,10 +24,21 @@ interface GitHubUser {
   };
 }
 
+interface ChangedFile {
+  name: string;
+  status: 'modified' | 'new' | 'deleted';
+}
+
 export default function SourceControl() {
   const [githubUser, setGithubUser] = useState<GitHubUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [authenticating, setAuthenticating] = useState(false);
+  const [commitMessage, setCommitMessage] = useState('');
+  const [changedFiles, setChangedFiles] = useState<ChangedFile[]>([
+    { name: 'HelloWorld.sol', status: 'modified' },
+    { name: 'new-feature.sol', status: 'new' },
+  ]);
+  const [stagedFiles, setStagedFiles] = useState<ChangedFile[]>([]);
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -52,17 +56,33 @@ export default function SourceControl() {
     }
   };
 
+  const handleStageFile = (file: ChangedFile) => {
+    setChangedFiles(changedFiles.filter(f => f.name !== file.name));
+    setStagedFiles([...stagedFiles, file]);
+  };
+
+  const handleUnstageFile = (file: ChangedFile) => {
+    setStagedFiles(stagedFiles.filter(f => f.name !== file.name));
+    setChangedFiles([...changedFiles, file]);
+  };
+
+  const handleCommit = () => {
+    if (!commitMessage.trim()) {
+      alert('Please enter a commit message.');
+      return;
+    }
+    // Mock commit action
+    alert(`Committed ${stagedFiles.length} files with message: "${commitMessage}"`);
+    setStagedFiles([]);
+    setCommitMessage('');
+  };
+
   const handleGitHubLogin = async () => {
     setAuthenticating(true);
     try {
       const success = `${window.location.origin}/`;
       const failure = `${window.location.origin}/?error=github_auth_failed`;
-      
-      await account.createOAuth2Session(
-        OAuthProvider.Github,
-        success,
-        failure
-      );
+      await account.createOAuth2Session(OAuthProvider.Github, success, failure);
     } catch (error) {
       console.error('GitHub auth error:', error);
       setAuthenticating(false);
@@ -79,131 +99,79 @@ export default function SourceControl() {
   };
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="100%">
-        <CircularProgress size={32} />
-      </Box>
-    );
+    return <Box display="flex" justifyContent="center" p={3}><CircularProgress /></Box>;
   }
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 3 }}>
-      <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-        Source Control
-      </Typography>
-
+    <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
       {githubUser ? (
-        <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {/* User Profile */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar 
-              src={githubUser.prefs?.githubAvatar}
-              sx={{ width: 48, height: 48 }}
-            >
-              {githubUser.name?.charAt(0).toUpperCase()}
-            </Avatar>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                {githubUser.name}
-              </Typography>
-              {githubUser.email && (
-                <Typography variant="body2" color="text.secondary">
-                  {githubUser.email}
-                </Typography>
-              )}
-            </Box>
-          </Box>
-
-          {/* Status */}
-          <Chip 
-            icon={<CheckCircleIcon />}
-            label="Connected to GitHub"
-            color="success"
+        <>
+          <TextField
+            fullWidth
+            label="Commit Message"
             variant="outlined"
-            sx={{ alignSelf: 'flex-start' }}
+            size="small"
+            value={commitMessage}
+            onChange={(e) => setCommitMessage(e.target.value)}
           />
+          <Button
+            fullWidth
+            variant="contained"
+            sx={{ mt: 1 }}
+            onClick={handleCommit}
+            disabled={stagedFiles.length === 0}
+          >
+            Commit & Push
+          </Button>
+          <Divider sx={{ my: 2 }} />
 
-          <Divider />
-
-          {/* Repository Info */}
-          <Box>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              Recent Activity
-            </Typography>
-            <List dense>
-              <ListItem>
-                <ListItemText 
-                  primary="No commits yet"
-                  secondary="Start coding to see your changes here"
-                />
+          <Typography variant="subtitle2" gutterBottom>Staged Changes</Typography>
+          <List dense>
+            {stagedFiles.map(file => (
+              <ListItem key={file.name} secondaryAction={
+                <IconButton edge="end" onClick={() => handleUnstageFile(file)}>
+                  <RemoveIcon />
+                </IconButton>
+              }>
+                <ListItemText primary={file.name} />
               </ListItem>
-            </List>
-          </Box>
+            ))}
+          </List>
 
-          {/* Actions */}
-          <Box sx={{ mt: 'auto', pt: 2 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              color="error"
-              startIcon={<LogoutIcon />}
-              onClick={handleLogout}
-            >
+          <Typography variant="subtitle2" gutterBottom>Changes</Typography>
+          <List dense>
+            {changedFiles.map(file => (
+              <ListItem key={file.name} secondaryAction={
+                <IconButton edge="end" onClick={() => handleStageFile(file)}>
+                  <AddIcon />
+                </IconButton>
+              }>
+                <ListItemText primary={file.name} />
+              </ListItem>
+            ))}
+          </List>
+
+          <Box sx={{ mt: 'auto' }}>
+            <Button fullWidth variant="outlined" color="error" onClick={handleLogout} startIcon={<LogoutIcon />}>
               Disconnect GitHub
             </Button>
           </Box>
-        </Box>
+        </>
       ) : (
-        <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center', textAlign: 'center' }}>
-          <Box 
-            sx={{ 
-              width: 80, 
-              height: 80, 
-              borderRadius: '50%', 
-              backgroundColor: 'action.hover',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <GitHubIcon sx={{ fontSize: 40, color: 'text.secondary' }} />
-          </Box>
-
-          <Box>
-            <Typography variant="h6" gutterBottom>
-              Connect to GitHub
-            </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              Authenticate with GitHub to enable source control features, sync your code, and manage repositories.
-            </Typography>
-          </Box>
-
-          <Alert severity="info" sx={{ width: '100%' }}>
-            <Typography variant="body2">
-              You&apos;ll be redirected to GitHub to authorize VeeStudio. Your code will remain secure.
-            </Typography>
-          </Alert>
-
+        <Box sx={{ textAlign: 'center' }}>
+          <GitHubIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h6" gutterBottom>Connect to GitHub</Typography>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Authenticate to sync your code and manage repositories.
+          </Typography>
           <Button
             variant="contained"
-            size="large"
             startIcon={authenticating ? <CircularProgress size={20} /> : <GitHubIcon />}
             onClick={handleGitHubLogin}
             disabled={authenticating}
-            sx={{ 
-              mt: 2,
-              backgroundColor: '#24292e',
-              '&:hover': {
-                backgroundColor: '#1b1f23',
-              }
-            }}
           >
             {authenticating ? 'Authenticating...' : 'Sign in with GitHub'}
           </Button>
-
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 2 }}>
-            By connecting, you agree to grant VeeStudio access to your public repositories
-          </Typography>
         </Box>
       )}
     </Box>

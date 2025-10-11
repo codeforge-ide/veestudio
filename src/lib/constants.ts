@@ -19,40 +19,6 @@ export const VECHAIN_NETWORKS = {
 
 export const DEFAULT_NETWORK = 'test';
 
-// Default contract template
-export const DEFAULT_CONTRACT = `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-
-/**
- * @title HelloWorld
- * @dev A simple smart contract to store and retrieve a message
- */
-contract HelloWorld {
-    string private message;
-    
-    event MessageUpdated(string newMessage, address updater);
-    
-    constructor() {
-        message = "Hello, VeChain!";
-    }
-    
-    /**
-     * @dev Updates the stored message
-     * @param newMessage The new message to store
-     */
-    function setMessage(string memory newMessage) public {
-        message = newMessage;
-        emit MessageUpdated(newMessage, msg.sender);
-    }
-    
-    /**
-     * @dev Returns the stored message
-     * @return The current message
-     */
-    function getMessage() public view returns (string memory) {
-        return message;
-    }
-}`;
 
 // Demo contract templates for fallback
 export const DEMO_CONTRACTS: Record<string, string> = {

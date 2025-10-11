@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Box } from '@mui/material';
 import dynamic from 'next/dynamic';
 import Header from '@/components/header/Header';
@@ -8,9 +8,11 @@ import PrimarySidebar from '@/components/sidebars/PrimarySidebar';
 import AISidebar from '@/components/sidebars/AISidebar';
 import { TerminalHandle } from '@/components/terminal/Terminal';
 import { WalletState, SidebarView, Connex } from '@/types';
-import { DEFAULT_CONTRACT } from '@/lib/constants';
-import { generateContract, extractContractName } from '@/lib/ai';
+import { generateContract, extractContractName, explainCode, generateTests, refactorCode } from '@/lib/ai';
 import { getContractExplorerUrl } from '@/lib/vechain';
+import * as FileSystem from '@/lib/filesystem';
+import { File as FsFile } from '@/lib/filesystem';
+import { editor } from 'monaco-editor';
 
 const CodeEditor = dynamic(() => import('@/components/editor/CodeEditor'), {
   ssr: false,
@@ -27,7 +29,7 @@ const Terminal = dynamic(() => import('@/components/terminal/Terminal'), {
 });
 
 export default function Home() {
-  const [code, setCode] = useState(DEFAULT_CONTRACT);
+  const [activeFile, setActiveFile] = useState<FsFile | null>(null);
   const [wallet, setWallet] = useState<WalletState>({
     connected: false,
     address: null,
@@ -40,6 +42,51 @@ export default function Home() {
 
   const terminalRef = useRef<TerminalHandle | null>(null);
   const connexRef = useRef<Connex | null>(null);
+
+  useEffect(() => {
+    const fs = FileSystem.getFileSystem();
+    if (fs.root.files.length > 0) {
+      setActiveFile(fs.root.files[0]);
+    }
+  }, []);
+
+  const handleCodeChange = (newCode: string) => {
+    if (activeFile) {
+      const fs = FileSystem.getFileSystem();
+      const updatedFs = FileSystem.updateFileContent(fs, activeFile.id, newCode);
+      FileSystem.saveFileSystem(updatedFs);
+      setActiveFile({ ...activeFile, content: newCode });
+    }
+  };
+
+  const handleFileSelect = (file: FsFile) => {
+    setActiveFile(file);
+  };
+
+  const handleAiAction = async (action: 'explain' | 'test' | 'refactor', code: string) => {
+    terminalRef.current?.writeLine(`AI: ${action}ing code...`, 'info');
+    try {
+      let result;
+      if (action === 'explain') {
+        result = await explainCode(code);
+        terminalRef.current?.writeLine(result, 'info');
+      } else if (action === 'test') {
+        result = await generateTests(code);
+        const testFile = FileSystem.createFile(FileSystem.getFileSystem().root, `${activeFile?.name}.t.sol`);
+        handleCodeChange(result);
+        setActiveFile(testFile);
+      } else if (action === 'refactor') {
+        result = await refactorCode(code);
+        handleCodeChange(result);
+      }
+    } catch (error) {
+      terminalRef.current?.writeLine(`AI action failed: ${error}`, 'error');
+    }
+  };
+
+  const handleMarkersChange = (markers: editor.IMarker[]) => {
+    terminalRef.current?.setProblems(markers);
+  };
 
   const handleTerminalReady = useCallback((terminal: TerminalHandle) => {
     terminalRef.current = terminal;
@@ -101,7 +148,9 @@ export default function Home() {
 
     try {
       const result = await generateContract(prompt);
-      setCode(result.code);
+      if (activeFile) {
+        handleCodeChange(result.code);
+      }
       terminalRef.current?.writeLine('✓ Contract generated successfully!', 'success');
       terminalRef.current?.writeLine(result.explanation, 'info');
     } catch (error) {
@@ -111,18 +160,19 @@ export default function Home() {
     } finally {
       setIsGenerating(false);
     }
-  }, []);
+  }, [activeFile]);
 
   const handleCompile = useCallback(async () => {
+    if (!activeFile) return;
     terminalRef.current?.writeLine('⚙ Compiling contract...', 'info');
 
     try {
-      const contractName = extractContractName(code);
+      const contractName = extractContractName(activeFile.content);
       
       const response = await fetch('/api/compile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, contractName }),
+        body: JSON.stringify({ code: activeFile.content, contractName }),
       });
 
       const data = await response.json();
@@ -147,13 +197,14 @@ export default function Home() {
       console.error('Compilation error:', error);
       terminalRef.current?.writeLine('✗ Compilation error', 'error');
     }
-  }, [code]);
+  }, [activeFile]);
 
   const handleDeploy = useCallback(async () => {
     if (!wallet.connected) {
       terminalRef.current?.writeLine('✗ Please connect your wallet first', 'error');
       return;
     }
+    if (!activeFile) return;
 
     setIsDeploying(true);
     terminalRef.current?.writeLine('🚀 Starting deployment process...', 'info');
@@ -161,12 +212,12 @@ export default function Home() {
     try {
       if (!compiledData) {
         terminalRef.current?.writeLine('⚙ Compiling contract...', 'info');
-        const contractName = extractContractName(code);
+        const contractName = extractContractName(activeFile.content);
         
         const compileResponse = await fetch('/api/compile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, contractName }),
+          body: JSON.stringify({ code: activeFile.content, contractName }),
         });
 
         const compileData = await compileResponse.json();
@@ -241,7 +292,7 @@ export default function Home() {
     } finally {
       setIsDeploying(false);
     }
-  }, [wallet, code, compiledData]);
+  }, [wallet, activeFile, compiledData]);
 
   return (
     <Box sx={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', bgcolor: 'background.default', overflow: 'hidden' }}>
@@ -259,11 +310,17 @@ export default function Home() {
           onViewChange={setActiveView}
           onCompile={handleCompile}
           onDeploy={handleDeploy}
+          onFileSelect={handleFileSelect}
         />
 
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <Box sx={{ flex: 1, overflow: 'hidden', borderRight: 1, borderBottom: 1, borderColor: 'divider' }}>
-            <CodeEditor value={code} onChange={(value) => setCode(value || '')} />
+            <CodeEditor
+              value={activeFile?.content || ''}
+              onChange={(value) => handleCodeChange(value || '')}
+              onAiAction={handleAiAction}
+              onMarkersChange={handleMarkersChange}
+            />
           </Box>
 
           <Box sx={{ height: 192, borderRight: 1, borderColor: 'divider' }}>

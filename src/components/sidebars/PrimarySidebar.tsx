@@ -1,27 +1,77 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, IconButton, Typography, Button, Alert, Tooltip } from '@mui/material';
+import { TreeView, TreeItem } from '@mui/lab';
 import FolderIcon from '@mui/icons-material/Folder';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import GitHubIcon from '@mui/icons-material/GitHub';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import AddIcon from '@mui/icons-material/Add';
+import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
 import { SidebarView } from '@/types';
 import SourceControl from './SourceControl';
+import * as FileSystem from '@/lib/filesystem';
+import { File, Folder } from '@/lib/filesystem';
 
 interface PrimarySidebarProps {
   activeView: SidebarView;
   onViewChange: (view: SidebarView) => void;
   onCompile: () => void;
   onDeploy: () => void;
+  onFileSelect: (file: File) => void;
 }
 
-export default function PrimarySidebar({ 
-  activeView, 
-  onViewChange, 
+export default function PrimarySidebar({
+  activeView,
+  onViewChange,
   onCompile,
-  onDeploy 
+  onDeploy,
+  onFileSelect,
 }: PrimarySidebarProps) {
+  const [fs, setFs] = useState<FileSystem.FileSystem | null>(null);
+
+  useEffect(() => {
+    setFs(FileSystem.getFileSystem());
+  }, []);
+
+  const handleCreateFile = () => {
+    const fileName = prompt('Enter file name:');
+    if (fileName && fs) {
+      const newFile = FileSystem.createFile(fs.root, fileName);
+      const newFs = { ...fs };
+      setFs(newFs);
+      FileSystem.saveFileSystem(newFs);
+      onFileSelect(newFile);
+    }
+  };
+
+  const handleCreateFolder = () => {
+    const folderName = prompt('Enter folder name:');
+    if (folderName && fs) {
+      FileSystem.createFolder(fs.root, folderName);
+      const newFs = { ...fs };
+      setFs(newFs);
+      FileSystem.saveFileSystem(newFs);
+    }
+  };
+
+  const renderTree = (node: Folder) => (
+    <TreeItem key={node.id} nodeId={node.id} label={node.name}>
+      {node.folders.map((folder) => renderTree(folder))}
+      {node.files.map((file) => (
+        <TreeItem
+          key={file.id}
+          nodeId={file.id}
+          label={file.name}
+          onClick={() => onFileSelect(file)}
+        />
+      ))}
+    </TreeItem>
+  );
+
   const menuItems = [
     { id: 'files' as SidebarView, icon: FolderIcon, label: 'Files', color: 'primary' },
     { id: 'source-control' as SidebarView, icon: GitHubIcon, label: 'Source Control', color: 'inherit' },
@@ -31,7 +81,7 @@ export default function PrimarySidebar({
 
   return (
     <Box display="flex" height="100%">
-      {/* STAGE 1: Icon-Only Fixed Bar (64px) - Like VSCode Activity Bar */}
+      {/* STAGE 1: Icon-Only Fixed Bar (64px) */}
       <Box
         sx={{
           width: 64,
@@ -48,7 +98,6 @@ export default function PrimarySidebar({
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
-          
           return (
             <Tooltip key={item.id} title={item.label} placement="right">
               <IconButton
@@ -60,12 +109,10 @@ export default function PrimarySidebar({
                   borderLeft: isActive ? 2 : 0,
                   borderColor: 'primary.main',
                   backgroundColor: isActive ? 'action.selected' : 'transparent',
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                  },
+                  '&:hover': { backgroundColor: 'action.hover' },
                 }}
               >
-                <Icon 
+                <Icon
                   color={isActive ? (item.color as 'primary' | 'success' | 'secondary' | 'inherit') : 'action'}
                   sx={{ fontSize: 24 }}
                 />
@@ -75,7 +122,7 @@ export default function PrimarySidebar({
         })}
       </Box>
 
-      {/* STAGE 2: Content Panel (Adjustable 288px) - Like VSCode Sidebar */}
+      {/* STAGE 2: Content Panel (288px) */}
       <Box
         sx={{
           width: 288,
@@ -88,52 +135,51 @@ export default function PrimarySidebar({
           flexShrink: 0,
         }}
       >
-        {/* Content Header */}
-        <Box 
-          sx={{ 
+        <Box
+          sx={{
             height: 64,
             borderBottom: 1,
             borderColor: 'divider',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
             px: 3,
             flexShrink: 0,
           }}
         >
           <Typography variant="subtitle1" fontWeight={600}>
-            {menuItems.find(item => item.id === activeView)?.label}
+            {menuItems.find((item) => item.id === activeView)?.label}
           </Typography>
-        </Box>
-
-        {/* Content Area - Changes based on active tab */}
-        <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
           {activeView === 'files' && (
-            <Box display="flex" flexDirection="column" gap={2}>
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1.5,
-                  p: 1.5,
-                  backgroundColor: 'action.hover',
-                  borderRadius: 1,
-                }}
-              >
-                <FolderIcon fontSize="small" color="primary" />
-                <Typography variant="body2">HelloWorld.sol</Typography>
-              </Box>
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 2, lineHeight: 1.6 }}>
-                File management coming soon. Currently editing the main contract file.
-              </Typography>
+            <Box>
+              <Tooltip title="New File">
+                <IconButton onClick={handleCreateFile}>
+                  <AddIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="New Folder">
+                <IconButton onClick={handleCreateFolder}>
+                  <CreateNewFolderIcon />
+                </IconButton>
+              </Tooltip>
             </Box>
           )}
+        </Box>
 
-          {activeView === 'source-control' && (
-            <SourceControl />
+        <Box sx={{ flex: 1, overflow: 'auto', p: 1 }}>
+          {activeView === 'files' && fs && (
+            <TreeView
+              defaultCollapseIcon={<ExpandMoreIcon />}
+              defaultExpandIcon={<ChevronRightIcon />}
+            >
+              {renderTree(fs.root)}
+            </TreeView>
           )}
 
+          {activeView === 'source-control' && <SourceControl />}
+
           {activeView === 'compile' && (
-            <Box display="flex" flexDirection="column" gap={2}>
+            <Box sx={{ p: 2 }}>
               <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: 1 }}>
                 Compile your Solidity contract to check for errors and generate bytecode for deployment.
               </Typography>
@@ -147,7 +193,7 @@ export default function PrimarySidebar({
               >
                 Compile Contract
               </Button>
-              <Alert severity="info" sx={{ mt: 1 }}>
+              <Alert severity="info" sx={{ mt: 2 }}>
                 <Typography variant="caption">
                   �� Compile your contract before deploying to catch any errors early.
                 </Typography>
@@ -156,7 +202,7 @@ export default function PrimarySidebar({
           )}
 
           {activeView === 'deploy' && (
-            <Box display="flex" flexDirection="column" gap={2}>
+            <Box sx={{ p: 2 }}>
               <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: 1 }}>
                 Deploy your compiled contract to VeChain TestNet with sponsored gas fees.
               </Typography>
@@ -170,7 +216,7 @@ export default function PrimarySidebar({
               >
                 Deploy Contract
               </Button>
-              <Alert severity="success" sx={{ mt: 1 }}>
+              <Alert severity="success" sx={{ mt: 2 }}>
                 <Typography variant="body2" fontWeight={600} gutterBottom>
                   ✨ Gas fees sponsored!
                 </Typography>
